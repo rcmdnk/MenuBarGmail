@@ -11,7 +11,7 @@ __author__ = "rcmdnk"
 __copyright__ = "Copyright (c) 2015 rcmdnk"
 __credits__ = ["rcmdnk"]
 __license__ = "MIT"
-__version__ = "v0.0.4"
+__version__ = "v0.0.5"
 __date__ = "16/Nov/2015"
 __maintainer__ = "rcmdnk"
 __email__ = "rcmdnk@gmail.com"
@@ -106,7 +106,10 @@ class MenuBarGmail(rumps.App):
 
     @rumps.clicked('About')
     def about(self, sender):
-        rumps.alert("Gmail notification in Menu bar.")
+        rumps.alert(title="%s" % __prog__,
+                    message="Gmail notification in Menu bar.\n"
+                    + "Version %s\n" % __version__
+                    + "%s" % __copyright__)
 
     @rumps.clicked('Account')
     def account(self, sender):
