@@ -28,3 +28,5 @@ In OS X 10.11 El Capitan, you may need to install pyobjc packages.
 * Build
 
     $ python setup.py py2app
+
+then, **MenuBarGmail.app** will appear in **./dist** directory.
