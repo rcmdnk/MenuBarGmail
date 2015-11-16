@@ -146,7 +146,7 @@ class MenuBarGmail(rumps.App):
                                 ' INBOX is checked.',
                                 default_text=self.settings['labels']
                                 if 'labels' in self.settings else '',
-                                dimensions=(200, 20)).run()
+                                dimensions=(400, 20)).run()
         if response.clicked:
             self.settings['labels'] = response.text.upper()
             self.write_settings()
@@ -159,7 +159,7 @@ class MenuBarGmail(rumps.App):
     def set_filter(self, sender):
         response = rumps.Window('Set filter.\n'
                                 'e.g. "newer_than:1w"'
-                                ' for the mails within a week\n'
+                                ' for mails within a week\n'
                                 'ref:'
                                 'https://support.google.com/mail/answer/7190',
                                 default_text=self.settings['filter']
