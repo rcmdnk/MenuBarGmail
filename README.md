@@ -1,5 +1,8 @@
 # MenuBarGmail
 
+![menubargmaillabels.jpg](menubargmaillabels.jpg)
+
+
 Gmail notification in Menu Bar for Mac.
 
 Unread messages of Gmail are checked and the number of unread messages
@@ -63,7 +66,7 @@ For filter details, refer: [Advanced search - Gmail Help](https://support.google
 
 # How to build
 
-Tested at OS X 10.11.1 El Capitan, Python 2.7.10。
+Tested at OS X 10.11.1 El Capitan, Python 2.7.10 (installed by Homebrew)。
 
 * Requirements
     * [rumps](https://github.com/jaredks/rumps)
