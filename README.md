@@ -30,6 +30,7 @@ This function will remove
 * $HOME/.menubargmail_settings
 * $HOME/Library/LaunchAgents/menubargmail.plist
 * $HOME/Library/Application Support/MenuBarGmail/
+* MenuBarGmail.app
 
 # Usage
 
