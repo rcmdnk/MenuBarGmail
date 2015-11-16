@@ -16,7 +16,7 @@ New message notification is also available, too.
 
 With [Homebrew Cask](http://caskroom.io/), do:
 
-    $ brew cask install rcmdnk/MenuBarGmail/menubargmail
+    $ brew cask install rcmdnk/rcmdnkcask/menubargmail
 
 Or download the app and install it in **/Applications** or **~/Applications**.
 
@@ -43,8 +43,10 @@ an authentication page will be open in a browser.
 Following menus are available:
 
 * About: Show information of MenuBarGmail.
-* Account: Current account. Gmail page will be open by clicking this.
+* Account: Current account.
+    * Gmail page will be open by clicking this.
 * Reconnect: Renew account authentication.
+    * If you want to change an account, login to other account in default browser, then click Reconnect.
 * Unread messages: Number and details of unread messages.
 * Set checking interval: Set interval to check mails (Default: 60 (sec)).
 * Set labels: Set labels (comma-separated) to be checked (Default: "").
@@ -60,6 +62,8 @@ INBOX is checked (this is default).
 For filter details, refer: [Advanced search - Gmail Help](https://support.google.com/mail/answer/7190).
 
 # How to build
+
+Tested at OS X 10.11.1 El Capitan, Python 2.7.10。
 
 * Requirements
     * [rumps](https://github.com/jaredks/rumps)
