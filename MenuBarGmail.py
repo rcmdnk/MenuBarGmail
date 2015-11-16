@@ -38,9 +38,9 @@ MAILS_MAX_SHOW = 10
 AUTHENTICATION_FILE = os.environ['HOME'] + '/.menubargmail_oauth'
 SETTING_FILE = os.environ['HOME'] + '/.menubargmail_settings'
 PLIST_FILE = os.environ['HOME'] + '/Library/LaunchAgents/menubargmail.plist'
-GOOGLE_CLIENT_ID = '401979756927-fpb7bglpgj7vb3f62l7q6pil695g5tri.'\
-    'apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = 'HNE4WNkpd-Kuy18vkeOjcRfX'
+GOOGLE_CLIENT_ID = '401979756927-453hrgvmgjik9tqqq744s6pg7762hfel'\
+    '.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = 'sso7NdujDxkT92bxK2u-RPGi'
 MENU_BAR_ICON = 'MenuBarGmailMenuBarIcon.png'
 
 
