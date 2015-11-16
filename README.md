@@ -56,6 +56,8 @@ Following menus are available:
 If both labels and filter are not set (empty),
 INBOX is checked (this is default).
 
+For filter details, refer: [Advanced search - Gmail Help](https://support.google.com/mail/answer/7190).
+
 # How to build
 
 * Requirements

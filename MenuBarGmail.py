@@ -256,7 +256,8 @@ class MenuBarGmail(rumps.App):
                                  .execute()['labels']}
             else:
                 label_name_id = {'INBOX': 'INBOX', 'None': None}
-            labels = [x for x in labels if x in label_name_id]
+            labels = [x for x in labels
+                      if x.replace('/', '-') in label_name_id]
             if len(labels) == 0:
                 labels.append("None")
 
@@ -267,7 +268,8 @@ class MenuBarGmail(rumps.App):
             is_new = False
             for l in labels:
                 response = self.service.users().messages().list(
-                    userId='me', labelIds=label_name_id[l], q=query).execute()
+                    userId='me', labelIds=label_name_id[l.replace('/', '-')],
+                    q=query).execute()
                 ids[l] = []
                 if 'messages' in response:
                     ids[l].extend([x['id'] for x in response['messages']])
@@ -275,7 +277,8 @@ class MenuBarGmail(rumps.App):
                 while 'nextPageToken' in response:
                     page_token = response['nextPageToken']
                     response = self.service.users().messages().list(
-                        userId='me', labelIds=label_name_id[l],
+                        userId='me',
+                        labelIds=label_name_id[l.replace('/', '-')],
                         q=query, pageToken=page_token).execute()
                     ids[l].extend([x['id'] for x in response['messages']])
 
@@ -288,6 +291,12 @@ class MenuBarGmail(rumps.App):
                 self.messages[l] = {k: v for k, v
                                     in self.messages[l].items()
                                     if k in ids[l]}
+
+            removed = [x for x in self.messages.keys() if x not in labels]
+            if len(removed) > 0:
+                is_new = True
+                for l in removed:
+                    del self.messages[l]
 
             if not is_new:
                 # No new message
