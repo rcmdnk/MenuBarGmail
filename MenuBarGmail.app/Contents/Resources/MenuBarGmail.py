@@ -11,7 +11,7 @@ __author__ = "rcmdnk"
 __copyright__ = "Copyright (c) 2015 rcmdnk"
 __credits__ = ["rcmdnk"]
 __license__ = "MIT"
-__version__ = "v0.0.3"
+__version__ = "v0.0.5"
 __date__ = "16/Nov/2015"
 __maintainer__ = "rcmdnk"
 __email__ = "rcmdnk@gmail.com"
@@ -38,9 +38,9 @@ MAILS_MAX_SHOW = 10
 AUTHENTICATION_FILE = os.environ['HOME'] + '/.menubargmail_oauth'
 SETTING_FILE = os.environ['HOME'] + '/.menubargmail_settings'
 PLIST_FILE = os.environ['HOME'] + '/Library/LaunchAgents/menubargmail.plist'
-GOOGLE_CLIENT_ID = '401979756927-fpb7bglpgj7vb3f62l7q6pil695g5tri.'\
-    'apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = 'HNE4WNkpd-Kuy18vkeOjcRfX'
+GOOGLE_CLIENT_ID = '401979756927-453hrgvmgjik9tqqq744s6pg7762hfel'\
+    '.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = 'sso7NdujDxkT92bxK2u-RPGi'
 MENU_BAR_ICON = 'MenuBarGmailMenuBarIcon.png'
 
 
@@ -72,6 +72,7 @@ class MenuBarGmail(rumps.App):
             'Unread messages',
             'Set checking interval',
             'Set labels',
+            'Set filter',
             'Mail notification',
             'Start at login',
             None,
@@ -106,7 +107,10 @@ class MenuBarGmail(rumps.App):
 
     @rumps.clicked('About')
     def about(self, sender):
-        rumps.alert("Gmail notification in Menu bar.")
+        rumps.alert(title="%s" % __prog__,
+                    message="Gmail notification in Menu bar.\n"
+                    + "Version %s\n" % __version__
+                    + "%s" % __copyright__)
 
     @rumps.clicked('Account')
     def account(self, sender):
@@ -115,6 +119,9 @@ class MenuBarGmail(rumps.App):
     @rumps.clicked('Reconnect')
     def recoonect(self, sender):
         self.build_service(True)
+        if self.get_messages_timer.is_alive():
+            self.get_messages_timer.stop()
+        self.get_messages_timer.start()
 
     @rumps.clicked('Set checking interval')
     def set_interval(self, sender):
@@ -134,16 +141,37 @@ class MenuBarGmail(rumps.App):
 
     @rumps.clicked('Set labels')
     def set_labels(self, sender):
-        response = rumps.Window('Set labels. Multi labels'
-                                ' can be set by separating with comma (,)',
+        response = rumps.Window('Set labels (comma-separeted list).\n'
+                                'If "labels" is empty and filter is not set,'
+                                ' INBOX is checked.',
                                 default_text=self.settings['labels']
-                                if 'labels' in self.settings
-                                and self.settings['labels'] != ''
-                                else 'INBOX',
+                                if 'labels' in self.settings else '',
                                 dimensions=(200, 20)).run()
         if response.clicked:
             self.settings['labels'] = response.text.upper()
             self.write_settings()
+
+            if self.get_messages_timer.is_alive():
+                self.get_messages_timer.stop()
+            self.get_messages_timer.start()
+
+    @rumps.clicked('Set filter')
+    def set_filter(self, sender):
+        response = rumps.Window('Set filter.\n'
+                                'e.g. "newer_than:1w"'
+                                ' for the mails within a week\n'
+                                'ref:'
+                                'https://support.google.com/mail/answer/7190',
+                                default_text=self.settings['filter']
+                                if 'filter' in self.settings else '',
+                                dimensions=(400, 20)).run()
+        if response.clicked:
+            self.settings['filter'] = response.text.upper()
+            self.write_settings()
+
+            if self.get_messages_timer.is_alive():
+                self.get_messages_timer.stop()
+            self.get_messages_timer.start()
 
     @rumps.clicked('Mail notification')
     def mail_notification(self, sender):
@@ -159,13 +187,6 @@ class MenuBarGmail(rumps.App):
                 os.system('launchctl unload %s' % self.plist_file)
                 os.remove(self.plist_file)
         else:
-            exe = os.path.abspath(__file__)
-            if exe.find('Contents/Resources/') != -1:
-                name, ext = os.path.splitext(exe)
-                if ext == ".py":
-                    exe = name
-                exe = exe.replace("Resources", "MacOS")
-
             plist = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"'''\
 ''' "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -175,7 +196,7 @@ class MenuBarGmail(rumps.App):
         <string>menubargmail</string>
         <key>ProgramArguments</key>
         <array>
-            <string>''' + exe + '''</string>
+            <string>''' + self.get_exe() + '''</string>
         </array>
         <key>RunAtLoad</key>
         <true/>
@@ -197,9 +218,14 @@ class MenuBarGmail(rumps.App):
                 os.remove(self.plist_file)
             os.system('rm -f %s %s' % (self.authentication_file,
                                        self.setting_file))
-            os.system('rm -rf "%s/"' %
+            os.system('rm -rf "%s/%s"' %
                       (os.environ['HOME'],
                        '/Library/Application Support/MenuBarGmail'))
+            app = self.get_app()
+            if app != "":
+                os.system('rm -rf "%s"' % app)
+            else:
+                print "%s is not in App" % self.get_exe()
             rumps.quit_application()
 
     def get_messages(self, sender):
@@ -216,8 +242,9 @@ class MenuBarGmail(rumps.App):
                     labels.append(l.strip())
                     if l != "INBOX":
                         is_inbox_only = False
-            else:
-                labels.append('INBOX')
+            elif 'filter' not in self.settings\
+                    or self.settings['filter'].strip() == '':
+                labels.append("INBOX")
 
             if not is_inbox_only:
                 # Get labelIds
@@ -226,16 +253,21 @@ class MenuBarGmail(rumps.App):
                                  .labels().list(userId='me')
                                  .execute()['labels']}
             else:
-                label_name_id = {'INBOX': 'INBOX'}
-            labels = [x for x in labels if x in label_name_id]
+                label_name_id = {'INBOX': 'INBOX', 'None': None}
+            labels = [x for x in labels
+                      if x.replace('/', '-') in label_name_id]
+            if len(labels) == 0:
+                labels.append("None")
 
             # Get message ids
-            query = 'label:unread'
+            query = 'label:unread ' + (self.settings['filter']
+                                       if 'filter' in self.settings else '')
             ids = {}
             is_new = False
             for l in labels:
                 response = self.service.users().messages().list(
-                    userId='me', labelIds=label_name_id[l], q=query).execute()
+                    userId='me', labelIds=label_name_id[l.replace('/', '-')],
+                    q=query).execute()
                 ids[l] = []
                 if 'messages' in response:
                     ids[l].extend([x['id'] for x in response['messages']])
@@ -243,7 +275,8 @@ class MenuBarGmail(rumps.App):
                 while 'nextPageToken' in response:
                     page_token = response['nextPageToken']
                     response = self.service.users().messages().list(
-                        userId='me', labelIds=label_name_id[l],
+                        userId='me',
+                        labelIds=label_name_id[l.replace('/', '-')],
                         q=query, pageToken=page_token).execute()
                     ids[l].extend([x['id'] for x in response['messages']])
 
@@ -256,6 +289,12 @@ class MenuBarGmail(rumps.App):
                 self.messages[l] = {k: v for k, v
                                     in self.messages[l].items()
                                     if k in ids[l]}
+
+            removed = [x for x in self.messages.keys() if x not in labels]
+            if len(removed) > 0:
+                is_new = True
+                for l in removed:
+                    del self.messages[l]
 
             if not is_new:
                 # No new message
@@ -406,6 +445,23 @@ class MenuBarGmail(rumps.App):
         if label != '':
             url += '/mail/u/0/#label/' + urllib.quote(label.encode('utf-8'))
         webbrowser.open(url)
+
+    def get_exe(self):
+        exe = os.path.abspath(__file__)
+        if exe.find('Contents/Resources/') != -1:
+            name, ext = os.path.splitext(exe)
+            if ext == ".py":
+                exe = name
+            exe = exe.replace("Resources", "MacOS")
+        return exe
+
+    def get_app(self):
+        exe = self.get_exe()
+        if exe.find('Contents/MacOS/') == -1:
+            # Not in app
+            return ""
+        else:
+            return os.path.dirname(exe).replace("/Contents/MacOS", "")
 
 
 if __name__ == '__main__':
