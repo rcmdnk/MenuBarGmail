@@ -74,7 +74,10 @@ class MenuBarGmail(rumps.App):
             'Set labels',
             'Mail notification',
             'Start at login',
-            None]
+            None,
+            'Uninstall',
+            None,
+        ]
 
         # Other class variables
         self.address = ''
@@ -183,6 +186,18 @@ class MenuBarGmail(rumps.App):
 
         self.settings['startatlogin'] = str(sender.state)
         self.write_settings()
+
+    @rumps.clicked('Uninstall')
+    def uninstall(self, sender):
+        ret = rumps.alert("Do you want to uninstall MenuBarGmail?",
+                          ok="OK", cancel="Cancel")
+        if ret == 1:
+            if os.path.exists(self.plist_file):
+                os.system('launchctl unload %s' % self.plist_file)
+                os.remove(self.plist_file)
+            os.system('rm -f %s %s' % (self.authentication_file,
+                                       self.setting_file))
+            rumps.quit_application()
 
     def get_messages(self, sender):
         try:
