@@ -1,5 +1,16 @@
 # MenuBarGmail
-Gmail notification in Menu Bar for Mac
+
+Gmail notification in Menu Bar for Mac.
+
+Unread messages of Gmail are checked and the number of unread messages
+is shown in the menu bar.
+
+Default setting checks only Inbox.
+Multi-label can be set to be checked.
+
+Short information of unread messages are shown in the menu.
+
+New message notification is also available, too.
 
 # Installation
 
@@ -8,6 +19,38 @@ With [Homebrew Cask](http://caskroom.io/), do:
     $ brew cask install rcmdnk/MenuBarGmail/menubargmail
 
 Or download the app and install it in **/Applications** or **~/Applications**.
+
+# Uninstall
+
+Launch MenuBarGmail, and click **Uninstall** menu from menu bar icon.
+
+This function will remove
+
+* $HOME/.menubargmail_oauth
+* $HOME/.menubargmail_settings
+* $HOME/Library/LaunchAgents/menubargmail.plist
+* $HOME/Library/Application Support/MenuBarGmail/
+
+# Usage
+
+When you start MenuBarGmail,
+an authentication page will be open in a browser.
+**Accept** it, then a following icon will appear in the menubar.
+
+![MenuBarGmailMenuBarIcon.png](MenuBarGmailMenuBarIcon.png)
+
+Following menus are available:
+
+* About: Show information of MenuBarGmail.
+* Account: Current account. Gmail page will be open by clicking this.
+* Reconnect: Renew account authentication.
+* Unread messages: Number and details of unread messages.
+* Set checking interval: Set interval to check mails (Default is 60 sec).
+* Set labels: Set labels (comma-separated) to be checked (Default is `Inbox`).
+* Mail notification: Toggle if a notification is shown or not when the new message comes.
+* Start at login: Toggle if starting at login or not.
+* Uninstall: Uninstall MenuBarGmail.
+* Quit: Quit MenuBarGmail.
 
 # How to build
 
