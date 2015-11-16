@@ -45,12 +45,16 @@ Following menus are available:
 * Account: Current account. Gmail page will be open by clicking this.
 * Reconnect: Renew account authentication.
 * Unread messages: Number and details of unread messages.
-* Set checking interval: Set interval to check mails (Default is 60 sec).
-* Set labels: Set labels (comma-separated) to be checked (Default is `Inbox`).
+* Set checking interval: Set interval to check mails (Default: 60 (sec)).
+* Set labels: Set labels (comma-separated) to be checked (Default: "").
+* Set filter: Set filter for mail search (Defalt: "").
 * Mail notification: Toggle if a notification is shown or not when the new message comes.
 * Start at login: Toggle if starting at login or not.
 * Uninstall: Uninstall MenuBarGmail.
 * Quit: Quit MenuBarGmail.
+
+If both labels and filter are not set (empty),
+INBOX is checked (this is default).
 
 # How to build
 
