@@ -187,13 +187,6 @@ class MenuBarGmail(rumps.App):
                 os.system('launchctl unload %s' % self.plist_file)
                 os.remove(self.plist_file)
         else:
-            exe = os.path.abspath(__file__)
-            if exe.find('Contents/Resources/') != -1:
-                name, ext = os.path.splitext(exe)
-                if ext == ".py":
-                    exe = name
-                exe = exe.replace("Resources", "MacOS")
-
             plist = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"'''\
 ''' "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -203,7 +196,7 @@ class MenuBarGmail(rumps.App):
         <string>menubargmail</string>
         <key>ProgramArguments</key>
         <array>
-            <string>''' + exe + '''</string>
+            <string>''' + self.get_exe() + '''</string>
         </array>
         <key>RunAtLoad</key>
         <true/>
@@ -225,9 +218,14 @@ class MenuBarGmail(rumps.App):
                 os.remove(self.plist_file)
             os.system('rm -f %s %s' % (self.authentication_file,
                                        self.setting_file))
-            os.system('rm -rf "%s/"' %
+            os.system('rm -rf "%s/%s"' %
                       (os.environ['HOME'],
                        '/Library/Application Support/MenuBarGmail'))
+            app = self.get_app()
+            if app != "":
+                os.system('rm -rf "%s"' % app)
+            else:
+                print "%s is not in App" % self.get_exe()
             rumps.quit_application()
 
     def get_messages(self, sender):
@@ -447,6 +445,23 @@ class MenuBarGmail(rumps.App):
         if label != '':
             url += '/mail/u/0/#label/' + urllib.quote(label.encode('utf-8'))
         webbrowser.open(url)
+
+    def get_exe(self):
+        exe = os.path.abspath(__file__)
+        if exe.find('Contents/Resources/') != -1:
+            name, ext = os.path.splitext(exe)
+            if ext == ".py":
+                exe = name
+            exe = exe.replace("Resources", "MacOS")
+        return exe
+
+    def get_app(self):
+        exe = self.get_exe()
+        if exe.find('Contents/MacOS/') == -1:
+            # Not in app
+            return ""
+        else:
+            return os.path.dirname(exe).replace("/Contents/MacOS", "")
 
 
 if __name__ == '__main__':
