@@ -6,13 +6,13 @@ requirement: rumps (https://github.com/jaredks/rumps),
              httplib2, oauth2client, google-api-python-client
 """
 
-__prog__ = "menubargmail"
+__prog__ = "MenuBarGmail"
 __author__ = "rcmdnk"
 __copyright__ = "Copyright (c) 2015 rcmdnk"
 __credits__ = ["rcmdnk"]
 __license__ = "MIT"
-__version__ = "v0.0.1"
-__date__ = "13/Nov/2015"
+__version__ = "v0.0.4"
+__date__ = "16/Nov/2015"
 __maintainer__ = "rcmdnk"
 __email__ = "rcmdnk@gmail.com"
 __status__ = "Prototype"
@@ -197,6 +197,9 @@ class MenuBarGmail(rumps.App):
                 os.remove(self.plist_file)
             os.system('rm -f %s %s' % (self.authentication_file,
                                        self.setting_file))
+            os.system('rm -rf "%s/"' %
+                      (os.environ['HOME'],
+                       '/Library/Application Support/MenuBarGmail'))
             rumps.quit_application()
 
     def get_messages(self, sender):
