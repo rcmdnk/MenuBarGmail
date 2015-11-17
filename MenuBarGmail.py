@@ -355,9 +355,8 @@ class MenuBarGmail(rumps.App):
                     # Set each labels' menu
                     um_menu.add(l)
                     um_menu[l].title = '%s: %d' % (l, len(ids[l]))
-                for v in sorted([x for x in self.messages[l].values()
-                                 if 'Subject' in x],
-                                key=lambda x: x['Date']):
+                for v in [x for x in self.messages[l].values()
+                          if 'Subject' in x]:
                     if len(labels) > 1:
                         if len(um_menu[l]) < self.mails_max_show:
                             um_menu[l].add(
