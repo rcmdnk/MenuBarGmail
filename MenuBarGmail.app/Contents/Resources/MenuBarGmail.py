@@ -1,28 +1,19 @@
 #!/usr/bin/env python
 """
-menubargmail: Gmail notification in Menu bar,
+Gmail notification in Menu bar.
 
 requirement: rumps (https://github.com/jaredks/rumps),
              httplib2, oauth2client, google-api-python-client
+Worked with python 2.7
 """
-
-__prog__ = "MenuBarGmail"
-__author__ = "rcmdnk"
-__copyright__ = "Copyright (c) 2015 rcmdnk"
-__credits__ = ["rcmdnk"]
-__license__ = "MIT"
-__version__ = "v0.0.6"
-__date__ = "16/Nov/2015"
-__maintainer__ = "rcmdnk"
-__email__ = "rcmdnk@gmail.com"
-__status__ = "Prototype"
 
 import os
 import sys
 import re
-import httplib2
+import argparse
 import webbrowser
 import urllib
+import httplib2
 import BaseHTTPServer
 import rumps
 from oauth2client.file import Storage
@@ -31,6 +22,17 @@ from oauth2client.client import OAuth2WebServerFlow
 from apiclient.discovery import build
 from apiclient import errors
 
+__prog__ = os.path.basename(__file__)
+__description__ = __doc__
+__author__ = 'rcmdnk'
+__copyright__ = 'Copyright (c) 2015 rcmdnk'
+__credits__ = ['rcmdnk']
+__license__ = 'MIT'
+__version__ = 'v0.0.6'
+__date__ = '16/Nov/2015'
+__maintainer__ = 'rcmdnk'
+__email__ = 'rcmdnk@gmail.com'
+__status__ = 'Prototype'
 
 DEBUG = False
 MAILS_MAX_GET = 10
@@ -45,9 +47,10 @@ MENU_BAR_ICON = 'MenuBarGmailMenuBarIcon.png'
 
 
 class MenuBarGmail(rumps.App):
-    def __init__(self):
+    def __init__(self, autostart=True):
         # Set default values
-        rumps.debug_mode(DEBUG)
+        self.debug_mode = DEBUG
+        rumps.debug_mode(self.debug_mode)
         self.mails_max_get = MAILS_MAX_GET
         self.mails_max_show = MAILS_MAX_SHOW
         self.authentication_file = AUTHENTICATION_FILE
@@ -99,18 +102,19 @@ class MenuBarGmail(rumps.App):
             self.menu['Start at login'].state = False
 
         # Set and start get_messages
-        self.get_messages_timer = rumps.Timer(self.get_messages,
+        self.get_messages_timer = rumps.Timer(self.get_messages_wrapper,
                                               int(self.settings['interval'])
                                               if 'interval' in self.settings
                                               else 60)
-        self.get_messages_timer.start()
+        if autostart:
+            self.start()
 
     @rumps.clicked('About')
     def about(self, sender):
-        rumps.alert(title="%s" % __prog__,
-                    message="Gmail notification in Menu bar.\n"
-                    + "Version %s\n" % __version__
-                    + "%s" % __copyright__)
+        rumps.alert(title='%s' % __prog__,
+                    message='Gmail notification in Menu bar.\n'
+                    + 'Version %s\n' % __version__
+                    + '%s' % __copyright__)
 
     @rumps.clicked('Account')
     def account(self, sender):
@@ -119,15 +123,12 @@ class MenuBarGmail(rumps.App):
     @rumps.clicked('Reconnect')
     def recoonect(self, sender):
         self.build_service(True)
-        if self.get_messages_timer.is_alive():
-            self.get_messages_timer.stop()
-        self.get_messages_timer.start()
+        self.restart()
 
     @rumps.clicked('Set checking interval')
     def set_interval(self, sender):
         # Need to stop timer job, otherwise interval can not be changed.
-        if self.get_messages_timer.is_alive():
-            self.get_messages_timer.stop()
+        self.stop()
         response = rumps.Window('Set checking interval (s)',
                                 default_text=str(
                                     self.get_messages_timer.interval),
@@ -137,7 +138,7 @@ class MenuBarGmail(rumps.App):
             self.settings['interval'] = response.text
             self.write_settings()
 
-        self.get_messages_timer.start()
+        self.start()
 
     @rumps.clicked('Set labels')
     def set_labels(self, sender):
@@ -151,9 +152,7 @@ class MenuBarGmail(rumps.App):
             self.settings['labels'] = response.text.upper()
             self.write_settings()
 
-            if self.get_messages_timer.is_alive():
-                self.get_messages_timer.stop()
-            self.get_messages_timer.start()
+            self.restart()
 
     @rumps.clicked('Set filter')
     def set_filter(self, sender):
@@ -169,9 +168,7 @@ class MenuBarGmail(rumps.App):
             self.settings['filter'] = response.text.upper()
             self.write_settings()
 
-            if self.get_messages_timer.is_alive():
-                self.get_messages_timer.stop()
-            self.get_messages_timer.start()
+            self.restart()
 
     @rumps.clicked('Mail notification')
     def mail_notification(self, sender):
@@ -210,25 +207,15 @@ class MenuBarGmail(rumps.App):
 
     @rumps.clicked('Uninstall')
     def uninstall(self, sender):
-        ret = rumps.alert("Do you want to uninstall MenuBarGmail?",
-                          ok="OK", cancel="Cancel")
+        ret = rumps.alert('Do you want to uninstall MenuBarGmail?',
+                          ok='OK', cancel='Cancel')
         if ret == 1:
-            if os.path.exists(self.plist_file):
-                os.system('launchctl unload %s' % self.plist_file)
-                os.remove(self.plist_file)
-            os.system('rm -f %s %s' % (self.authentication_file,
-                                       self.setting_file))
-            os.system('rm -rf "%s/%s"' %
-                      (os.environ['HOME'],
-                       '/Library/Application Support/MenuBarGmail'))
-            app = self.get_app()
-            if app != "":
-                os.system('rm -rf "%s"' % app)
-            else:
-                print "%s is not in App" % self.get_exe()
-            rumps.quit_application()
+            self.remove_me()
 
-    def get_messages(self, sender):
+    def get_messages_wrapper(self, sender):
+        self.get_messages()
+
+    def get_messages(self, commandline=False):
         try:
             # Get service
             if self.service is None:
@@ -240,11 +227,11 @@ class MenuBarGmail(rumps.App):
             if 'labels' in self.settings and self.settings['labels'] != '':
                 for l in self.settings['labels'].split(','):
                     labels.append(l.strip())
-                    if l != "INBOX":
+                    if l != 'INBOX':
                         is_inbox_only = False
             elif 'filter' not in self.settings\
                     or self.settings['filter'].strip() == '':
-                labels.append("INBOX")
+                labels.append('INBOX')
 
             if not is_inbox_only:
                 # Get labelIds
@@ -257,7 +244,7 @@ class MenuBarGmail(rumps.App):
             labels = [x for x in labels
                       if x.replace('/', '-') in label_name_id]
             if len(labels) == 0:
-                labels.append("None")
+                labels.append('None')
 
             # Get message ids
             query = 'label:unread ' + (self.settings['filter']
@@ -339,7 +326,7 @@ class MenuBarGmail(rumps.App):
                                 self.messages[l][i]['Subject'] = x['value']
                             elif x['name'] == 'Date':
                                 self.messages[l][i]['Date'] =\
-                                    x['value'].split(" +")[0]
+                                    x['value'].split(' +')[0]
                             elif x['name'] == 'From':
                                 self.messages[l][i]['From'] = x['value']
                             if 'Subject' in self.messages[l][i]\
@@ -387,6 +374,21 @@ class MenuBarGmail(rumps.App):
                                     v['Date'], v['From'], v['Subject'],
                                     v['snippet']),
                                 callback=lambda x: self.open_gmail(l)))
+
+            if commandline or self.debug_mode:
+                print "labels: %s" % (self.settings['labels']
+                                      if 'labels' in self.settings else '')
+                print "filter: %s" % (self.settings['filter']
+                                      if 'filter' in self.settings else '')
+                print 'Total number of unread messages: %d\n' % len(all_ids)
+                for l in labels:
+                    if len(labels) > 1:
+                        print '%d messages for %s' % (len(ids[l]), l)
+                        for i in um_menu[l]:
+                            print "%s\n" % i.title()
+                    else:
+                        for i in um_menu:
+                            print "%s\n" % i.title()
 
         except errors.HttpError, error:
             print 'An error occurred: %s' % error
@@ -450,19 +452,68 @@ class MenuBarGmail(rumps.App):
         exe = os.path.abspath(__file__)
         if exe.find('Contents/Resources/') != -1:
             name, ext = os.path.splitext(exe)
-            if ext == ".py":
+            if ext == '.py':
                 exe = name
-            exe = exe.replace("Resources", "MacOS")
+            exe = exe.replace('Resources', 'MacOS')
         return exe
 
     def get_app(self):
         exe = self.get_exe()
         if exe.find('Contents/MacOS/') == -1:
             # Not in app
-            return ""
+            return ''
         else:
-            return os.path.dirname(exe).replace("/Contents/MacOS", "")
+            return os.path.dirname(exe).replace('/Contents/MacOS', '')
 
+    def reset(self):
+        if os.path.exists(self.plist_file):
+            os.system('launchctl unload %s' % self.plist_file)
+            os.remove(self.plist_file)
+        os.system('rm -f %s %s' % (self.authentication_file,
+                                   self.setting_file))
+        os.system('rm -rf "%s/%s"' %
+                  (os.environ['HOME'],
+                   '/Library/Application Support/MenuBarGmail'))
+
+    def remove_me(self):
+        self.reset()
+        app = self.get_app()
+        if app != "":
+            os.system('rm -rf "%s"' % app)
+        else:
+            print '%s is not in App' % self.get_exe()
+
+    def start(self):
+        self.get_messages_timer.start()
+
+    def stop(self):
+        if self.get_messages_timer.is_alive():
+            self.get_messages_timer.stop()
+
+    def restart(self):
+        self.stop()
+        self.start()
 
 if __name__ == '__main__':
-    MenuBarGmail().run()
+    parser = argparse.ArgumentParser(
+        prog=__prog__,
+        formatter_class=argparse.RawTextHelpFormatter,
+        description=__description__)
+    parser.add_argument('-u', '--uninstall', action='store_true',
+                        dest='uninstall',
+                        default=False, help='Uninstall %s' % __prog__)
+    parser.add_argument('-r', '--reset', action='store_true', dest='reset',
+                        default=False, help='Reset settings')
+    parser.add_argument('-c', '--commandline', action='store_true',
+                        dest='commandline',
+                        default=False, help='Check mails once in command line')
+    args = parser.parse_args()
+    app = MenuBarGmail(not (args.uninstall or args.reset or args.commandline))
+    if args.uninstall:
+        app.remove_me()
+    elif args.reset:
+        app.reset()
+    elif args.commandline:
+        app.get_messages(True)
+    else:
+        app.run()
