@@ -71,6 +71,7 @@ class MenuBarGmail(rumps.App):
             'About',
             None,
             'Account',
+            'Check now',
             'Reconnect',
             'Unread messages',
             'Set checking interval',
@@ -119,6 +120,10 @@ class MenuBarGmail(rumps.App):
     @rumps.clicked('Account')
     def account(self, sender):
         self.open_gmail()
+
+    @rumps.clicked('Check now')
+    def check_now(self, sender):
+        self.get_messages()
 
     @rumps.clicked('Reconnect')
     def recoonect(self, sender):
