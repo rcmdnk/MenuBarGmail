@@ -327,9 +327,10 @@ class MenuBarGmail(rumps.App):
                                 self.messages[l][i]['Subject'] = x['value']
                             elif x['name'] == 'Date':
                                 self.messages[l][i]['Date'] =\
-                                    x['value'].split(' +')[0]
+                                    x['value'].split(', ')[1].split(' +')[0]
                             elif x['name'] == 'From':
-                                self.messages[l][i]['From'] = x['value']
+                                self.messages[l][i]['From'] =\
+                                    re.sub(r' *<.*> *', '', x['value'])
                             if 'Subject' in self.messages[l][i]\
                                     and 'Date' in self.messages[l][i]\
                                     and 'From' in self.messages[l][i]:
