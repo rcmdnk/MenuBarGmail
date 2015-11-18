@@ -11,6 +11,7 @@ import os
 import sys
 import re
 import argparse
+import dateutil.parser
 import webbrowser
 import urllib
 import httplib2
@@ -312,49 +313,52 @@ class MenuBarGmail(rumps.App):
             n_get = 0
             for l in labels:
                 for i in ids[l]:
-                    if i not in self.messages[l].keys()\
-                            or 'Subject' not in self.messages[l][i]:
-                        is_new = True if i not in self.messages[l].keys()\
-                            else False
-                        self.messages[l][i] = {}
-                        if n_get >= self.mails_max_get:
-                            continue
-                        n_get += 1
-                        message = self.get_service().users().messages().get(
-                            userId='me', id=i).execute()
-                        for x in message['payload']['headers']:
-                            if x['name'] == 'Subject':
-                                self.messages[l][i]['Subject'] = x['value']
-                            elif x['name'] == 'Date':
-                                self.messages[l][i]['Date'] =\
-                                    x['value'].split(', ')[1].split(' +')[0]
-                            elif x['name'] == 'From':
-                                self.messages[l][i]['From'] =\
-                                    re.sub(r' *<.*> *', '', x['value'])
-                            if 'Subject' in self.messages[l][i]\
-                                    and 'Date' in self.messages[l][i]\
-                                    and 'From' in self.messages[l][i]:
-                                break
-                        self.messages[l][i]['labelIds'] = message['labelIds']
-                        self.messages[l][i]['snippet'] = message['snippet']
-                        self.messages[l][i]['body']\
-                            = self.messages[l][i]['snippet']
-                        # if 'body' in message['payload']\
-                        #         and 'data' in message['payload']['body']:
-                        #     self.messages[l][i]['body']\
-                        #         = message['payload']['body']['data']
-                        # else:
-                        #     self.messages[l][i]['body']\
-                        #         = self.messages[l][i]['snippet']
+                    if i in self.messages[l].keys()\
+                            and 'Subject' in self.messages[l][i]:
+                        continue
+                    is_new = True if i not in self.messages[l].keys()\
+                        else False
+                    self.messages[l][i] = {}
+                    if n_get >= self.mails_max_get:
+                        continue
+                    n_get += 1
+                    message = self.get_service().users().messages().get(
+                        userId='me', id=i).execute()
+                    for x in message['payload']['headers']:
+                        if x['name'] == 'Subject':
+                            self.messages[l][i]['Subject'] = x['value']
+                        elif x['name'] == 'Date':
+                            self.messages[l][i]['Date'] =\
+                                x['value'].split(', ')[1].split(' +')[0]
+                        elif x['name'] == 'From':
+                            self.messages[l][i]['From'] =\
+                                re.sub(r' *<.*> *', '', x['value'])
+                            if self.messages[l][i]['From'] == '':
+                                self.messages[l][i]['From'] = x['value']
+                        if 'Subject' in self.messages[l][i]\
+                                and 'Date' in self.messages[l][i]\
+                                and 'From' in self.messages[l][i]:
+                            break
+                    self.messages[l][i]['labelIds'] = message['labelIds']
+                    self.messages[l][i]['snippet'] = message['snippet']
+                    self.messages[l][i]['body']\
+                        = self.messages[l][i]['snippet']
+                    # if 'body' in message['payload']\
+                    #         and 'data' in message['payload']['body']:
+                    #     self.messages[l][i]['body']\
+                    #         = message['payload']['body']['data']
+                    # else:
+                    #     self.messages[l][i]['body']\
+                    #         = self.messages[l][i]['snippet']
 
-                        # Popup notification
-                        if is_new and not self.is_first\
-                                and self.menu['Mail notification'].state:
-                            rumps.notification(
-                                title='Mail from %s' %
-                                self.messages[l][i]['From'],
-                                subtitle=self.messages[l][i]['Subject'],
-                                message=self.messages[l][i]['snippet'])
+                    # Popup notification
+                    if is_new and not self.is_first\
+                            and self.menu['Mail notification'].state:
+                        rumps.notification(
+                            title='Mail from %s' %
+                            self.messages[l][i]['From'],
+                            subtitle=self.messages[l][i]['Subject'],
+                            message=self.messages[l][i]['snippet'])
 
             self.is_first = False
 
@@ -368,8 +372,12 @@ class MenuBarGmail(rumps.App):
                         l,
                         callback=lambda x, y=l: self.open_gmail(y)))
                     um_menu[l].title = '%s: %d' % (l, len(ids[l]))
-                for i, v in [(i, v) for i, v in self.messages[l].items()
-                             if 'Subject' in v]:
+                for i, v in sorted(
+                        [(i, v) for i, v in self.messages[l].items()
+                         if 'Subject' in v],
+                        key=lambda x: dateutil.parser.parse(
+                            x[1]['Date']).isoformat(),
+                        reverse=True):
                     title = '%s %s | %s' % (v['Date'], v['From'], v['Subject'])
                     title = title[0:80]
                     if len(labels) > 1:
