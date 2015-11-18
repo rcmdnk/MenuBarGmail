@@ -337,6 +337,15 @@ class MenuBarGmail(rumps.App):
                                 break
                         self.messages[l][i]['labelIds'] = message['labelIds']
                         self.messages[l][i]['snippet'] = message['snippet']
+                        self.messages[l][i]['body']\
+                            = self.messages[l][i]['snippet']
+                        # if 'body' in message['payload']\
+                        #         and 'data' in message['payload']['body']:
+                        #     self.messages[l][i]['body']\
+                        #         = message['payload']['body']['data']
+                        # else:
+                        #     self.messages[l][i]['body']\
+                        #         = self.messages[l][i]['snippet']
 
                         # Popup notification
                         if is_new and not self.is_first\
@@ -359,24 +368,25 @@ class MenuBarGmail(rumps.App):
                         l,
                         callback=lambda x, y=l: self.open_gmail(y)))
                     um_menu[l].title = '%s: %d' % (l, len(ids[l]))
-                for v in [x for x in self.messages[l].values()
-                          if 'Subject' in x]:
+                for i, v in [(i, v) for i, v in self.messages[l].items()
+                             if 'Subject' in v]:
+                    title = '%s %s | %s' % (v['Date'], v['From'], v['Subject'])
+                    title = title[0:80]
                     if len(labels) > 1:
-                        if len(um_menu[l]) < self.mails_max_show:
-                            um_menu[l].add(
-                                rumps.MenuItem(
-                                    '%s %s\n%s:  %s' % (
-                                        v['Date'], v['From'], v['Subject'],
-                                        v['snippet']),
-                                    callback=lambda x: self.open_gmail(l)))
-
+                        m = um_menu[l]
                     else:
-                        if len(um_menu) < self.mails_max_show:
-                            um_menu.add(rumps.MenuItem(
-                                '%s %s\n%s:  %s' % (
-                                    v['Date'], v['From'], v['Subject'],
-                                    v['snippet']),
-                                callback=lambda x: self.open_gmail(l)))
+                        m = um_menu
+                    if len(m) < self.mails_max_show:
+                        m.add(
+                            rumps.MenuItem(
+                                l+str(i),
+                                callback=lambda x, y=l, z=i:
+                                self.show_mail(y, z)))
+                        m[l+str(i)].title = title
+                        m[l+str(i)].add(rumps.MenuItem(
+                            l+str(i)+'snippet',
+                            callback=lambda x, y=l, z=i: self.show_mail(y, z)))
+                        m[l+str(i)][l+str(i)+'snippet'].title = v['snippet']
 
             if commandline or self.debug_mode:
                 print "labels: %s" % (self.settings['labels']
@@ -394,9 +404,7 @@ class MenuBarGmail(rumps.App):
                             print "%s\n" % i.title()
 
         except errors.HttpError, error:
-            print 'An error occurred: %s' % error
-        except:
-            print 'Unexpected error:', sys.exc_info()[0]
+            print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
 
     def read_settings(self):
         if not os.path.exists(self.setting_file):
@@ -442,7 +450,7 @@ class MenuBarGmail(rumps.App):
             OAuth2WebServerFlow(
                 client_id=self.google_client_id,
                 client_secret=self.google_client_secret,
-                scope=['https://www.googleapis.com/auth/gmail.readonly']),
+                scope=['https://www.googleapis.com/auth/gmail.modify']),
             storage, argparser.parse_args([]))
 
     def open_gmail(self, label=''):
@@ -450,6 +458,22 @@ class MenuBarGmail(rumps.App):
         if label != '':
             url += '/mail/u/0/#label/' + urllib.quote(label.encode('utf-8'))
         webbrowser.open(url)
+
+    def show_mail(self, label, msg_id):
+        # rumps.alert(title='From %s\n%s' % (sender, date),
+        #             message=subject + '\n\n' + message)
+        v = self.messages[label][msg_id]
+        w = rumps.Window(message=v['Subject']+'\n\n'+v['body'],
+                         title="From %s %s" % (v['From'], v['Date']),
+                         dimensions=(0, 0),
+                         ok="Cancel",
+                         cancel="Open in browser")
+        w.add_button("Mark as read")
+        response = w.run()
+        if response.clicked == 0:
+            self.open_gmail(label)
+        elif response.clicked == 2:
+            self.mark_as_read(msg_id)
 
     def get_exe(self):
         exe = os.path.abspath(__file__)
@@ -501,6 +525,21 @@ class MenuBarGmail(rumps.App):
         if self.service is None:
             self.service = self.build_service()
         return self.service
+
+    def remove_labels(self, msg_id, labels):
+        if type(labels) == str:
+            labels = [labels]
+        msg_labels = {"addLabelIds": [], "removeLabelIds": labels}
+        try:
+            self.get_service().users().messages().modify(
+                userId='me', id=msg_id,
+                body=msg_labels).execute()
+        except errors.HttpError, error:
+            print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
+
+    def mark_as_read(self, msg_id):
+        self.remove_labels(msg_id, 'UNREAD')
+        self.get_messages()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
