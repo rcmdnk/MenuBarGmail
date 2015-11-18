@@ -222,10 +222,6 @@ class MenuBarGmail(rumps.App):
 
     def get_messages(self, commandline=False):
         try:
-            # Get service
-            if self.service is None:
-                self.service = self.build_service()
-
             # Set labels
             is_inbox_only = True
             labels = []
@@ -241,7 +237,7 @@ class MenuBarGmail(rumps.App):
             if not is_inbox_only:
                 # Get labelIds
                 label_name_id = {x['name'].upper().replace('/', '-'): x['id']
-                                 for x in self.service.users()
+                                 for x in self.get_service().users()
                                  .labels().list(userId='me')
                                  .execute()['labels']}
             else:
@@ -257,7 +253,7 @@ class MenuBarGmail(rumps.App):
             ids = {}
             is_new = False
             for l in labels:
-                response = self.service.users().messages().list(
+                response = self.get_service().users().messages().list(
                     userId='me', labelIds=label_name_id[l.replace('/', '-')],
                     q=query).execute()
                 ids[l] = []
@@ -266,7 +262,7 @@ class MenuBarGmail(rumps.App):
 
                 while 'nextPageToken' in response:
                     page_token = response['nextPageToken']
-                    response = self.service.users().messages().list(
+                    response = self.get_service().users().messages().list(
                         userId='me',
                         labelIds=label_name_id[l.replace('/', '-')],
                         q=query, pageToken=page_token).execute()
@@ -324,7 +320,7 @@ class MenuBarGmail(rumps.App):
                         if n_get >= self.mails_max_get:
                             continue
                         n_get += 1
-                        message = self.service.users().messages().get(
+                        message = self.get_service().users().messages().get(
                             userId='me', id=i).execute()
                         for x in message['payload']['headers']:
                             if x['name'] == 'Subject':
@@ -497,6 +493,11 @@ class MenuBarGmail(rumps.App):
     def restart(self):
         self.stop()
         self.start()
+
+    def get_service(self):
+        if self.service is None:
+            self.service = self.build_service()
+        return self.service
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
