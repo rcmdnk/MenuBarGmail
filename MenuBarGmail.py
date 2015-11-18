@@ -355,7 +355,9 @@ class MenuBarGmail(rumps.App):
             for l in labels:
                 if len(labels) > 1:
                     # Set each labels' menu
-                    um_menu.add(l)
+                    um_menu.add(rumps.MenuItem(
+                        l,
+                        callback=lambda x, y=l: self.open_gmail(y)))
                     um_menu[l].title = '%s: %d' % (l, len(ids[l]))
                 for v in [x for x in self.messages[l].values()
                           if 'Subject' in x]:
