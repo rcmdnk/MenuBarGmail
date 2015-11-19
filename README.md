@@ -48,6 +48,7 @@ Following menus are available:
 * About: Show information of MenuBarGmail.
 * Account: Current account.
     * Gmail page will be open by clicking this.
+* Check now: Check mails now.
 * Reconnect: Renew account authentication.
     * If you want to change an account, login to other account in default browser, then click Reconnect.
 * Unread messages: Number and details of unread messages.
@@ -63,6 +64,16 @@ If both labels and filter are not set (empty),
 INBOX is checked (this is default).
 
 For filter details, refer: [Advanced search - Gmail Help](https://support.google.com/mail/answer/7190).
+
+Message details (Date, From, Subject, Short summary of message)
+can be seen as a submenu of **Unread message**.
+
+If two different labels are set,
+each label is shown as a submenu then details are shown as a submenu of it.
+
+A pop up window with full details will be shown
+by clicking these submenus.
+On the window, **Mark as read** and **Open in browser** buttons are availabl.
 
 # How to build
 
