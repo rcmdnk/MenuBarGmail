@@ -11,12 +11,14 @@ import os
 import sys
 import re
 import argparse
+import base64
 import dateutil.parser
 import webbrowser
 import urllib
 import httplib2
 import BaseHTTPServer
 import rumps
+from email.mime.text import MIMEText
 from oauth2client.file import Storage
 from oauth2client.tools import run_flow, argparser
 from oauth2client.client import OAuth2WebServerFlow
@@ -89,6 +91,7 @@ class MenuBarGmail(rumps.App):
         self.address = ''
         self.address = ''
         self.messages = {}
+        self.message_contents = {}
         self.service = None
         self.is_first = True
 
@@ -270,21 +273,20 @@ class MenuBarGmail(rumps.App):
                     ids[l].extend([x['id'] for x in response['messages']])
 
                 if l not in self.messages:
-                    self.messages[l] = {}
-                if ids[l] != self.messages[l].keys():
+                    self.messages[l] = []
+                if ids[l] != self.messages[l]:
                     is_new = True
 
                 # Remove read messages' id
-                self.messages[l] = {k: v for k, v
-                                    in self.messages[l].items()
-                                    if k in ids[l]}
+                self.messages[l] = ids[l]
 
-            removed = [x for x in self.messages.keys() if x not in labels]
+            removed = [x for x in self.messages if x not in labels]
             if len(removed) > 0:
                 is_new = True
                 for l in removed:
                     del self.messages[l]
 
+            # No change
             if not is_new:
                 # No new message
                 return
@@ -295,6 +297,10 @@ class MenuBarGmail(rumps.App):
             for l in labels:
                 all_ids += ids[l]
             all_ids = list(set(all_ids))
+
+            self.message_contents = {
+                k: v for k, v in self.message_contents.items()
+                if k in all_ids}
 
             # Set menu's title
             um_menu = self.menu['Unread messages']
@@ -311,54 +317,61 @@ class MenuBarGmail(rumps.App):
 
             # Get message contents
             n_get = 0
-            for l in labels:
-                for i in ids[l]:
-                    if i in self.messages[l].keys()\
-                            and 'Subject' in self.messages[l][i]:
-                        continue
-                    is_new = True if i not in self.messages[l].keys()\
-                        else False
-                    self.messages[l][i] = {}
-                    if n_get >= self.mails_max_get:
-                        continue
-                    n_get += 1
-                    message = self.get_service().users().messages().get(
-                        userId='me', id=i).execute()
-                    for x in message['payload']['headers']:
-                        if x['name'] == 'Subject':
-                            self.messages[l][i]['Subject'] = x['value']
-                        elif x['name'] == 'Date':
-                            self.messages[l][i]['Date'] =\
-                                x['value'].split(', ')[1].split(' +')[0]
-                        elif x['name'] == 'From':
-                            self.messages[l][i]['From'] =\
-                                re.sub(r' *<.*> *', '', x['value'])
-                            if self.messages[l][i]['From'] == '':
-                                self.messages[l][i]['From'] = x['value']
-                        if 'Subject' in self.messages[l][i]\
-                                and 'Date' in self.messages[l][i]\
-                                and 'From' in self.messages[l][i]:
-                            break
-                    self.messages[l][i]['labelIds'] = message['labelIds']
-                    self.messages[l][i]['snippet'] = message['snippet']
-                    self.messages[l][i]['body']\
-                        = self.messages[l][i]['snippet']
-                    # if 'body' in message['payload']\
-                    #         and 'data' in message['payload']['body']:
-                    #     self.messages[l][i]['body']\
-                    #         = message['payload']['body']['data']
-                    # else:
-                    #     self.messages[l][i]['body']\
-                    #         = self.messages[l][i]['snippet']
+            for i in all_ids:
+                if i in self.message_contents\
+                        and 'Subject' in self.message_contents[i]:
+                    continue
+                is_new = True if i not in self.message_contents\
+                    else False
+                self.message_contents[i] = {}
+                if n_get >= self.mails_max_get:
+                    continue
+                n_get += 1
+                message = self.get_service().users().messages().get(
+                    userId='me', id=i).execute()
+                for x in message['payload']['headers']:
+                    if x['name'] == 'Subject':
+                        self.message_contents[i]['Subject'] = x['value']
+                    elif x['name'] == 'Date':
+                        self.message_contents[i]['Date'] =\
+                            x['value'].split(', ')[1].split(' +')[0]
+                    elif x['name'] == 'From':
+                        self.message_contents[i]['FromName'] =\
+                            self.get_address_name(x['value'])
+                        self.message_contents[i]['From'] = x['value']
+                    elif x['name'] in ['Subject', 'To', 'Cc', 'Bcc',
+                                       'In-Reply-To', 'References', ]:
+                        self.message_contents[i][x['name']] = x['value']
 
-                    # Popup notification
-                    if is_new and not self.is_first\
-                            and self.menu['Mail notification'].state:
-                        rumps.notification(
-                            title='Mail from %s' %
-                            self.messages[l][i]['From'],
-                            subtitle=self.messages[l][i]['Subject'],
-                            message=self.messages[l][i]['snippet'])
+                for k in ['To', 'Cc']:
+                    if k not in self.message_contents[i]:
+                        self.message_contents[i][k] = ''
+
+                self.message_contents[i]['labelIds'] = message['labelIds']
+                self.message_contents[i]['snippet'] = message['snippet']
+                body = None
+                if 'payload' in message and 'parts' in message['payload']:
+                    for p in message['payload']['parts']:
+                        if 'body' in p and 'data' in p['body']:
+                            body = p['body']['data']
+                            break
+                    if body is None and 'body' in message['payload']\
+                            and 'data' in message['payload']['body']:
+                        body = message['payload']['body']['data']
+                    if body is not None:
+                        self.message_contents[i]['body']\
+                            = base64.urlsafe_b64decode(body.encode('UTF-8'))
+                if body is None:
+                    self.message_contents[i]['body'] = message['snippet']
+
+                # Popup notification
+                if is_new and not self.is_first\
+                        and self.menu['Mail notification'].state:
+                    rumps.notification(
+                        title='Mail from %s' %
+                        self.message_contents[i]['FromName'],
+                        subtitle=self.message_contents[i]['Subject'],
+                        message=self.message_contents[i]['snippet'])
 
             self.is_first = False
 
@@ -372,13 +385,14 @@ class MenuBarGmail(rumps.App):
                         l,
                         callback=lambda x, y=l: self.open_gmail(y)))
                     um_menu[l].title = '%s: %d' % (l, len(ids[l]))
-                for i, v in sorted(
-                        [(i, v) for i, v in self.messages[l].items()
-                         if 'Subject' in v],
-                        key=lambda x: dateutil.parser.parse(
-                            x[1]['Date']).isoformat(),
-                        reverse=True):
-                    title = '%s %s | %s' % (v['Date'], v['From'], v['Subject'])
+                for i in sorted([i for i in self.messages[l]
+                                 if 'Subject' in self.message_contents[i]],
+                                key=lambda x: dateutil.parser.parse(
+                                    self.message_contents[x]['Date'])
+                                .isoformat(),
+                                reverse=True):
+                    v = self.message_contents[i]
+                    title = '%s %s | %s' % (v['Date'], v['FromName'], v['Subject'])
                     title = title[0:80]
                     if len(labels) > 1:
                         m = um_menu[l]
@@ -397,19 +411,20 @@ class MenuBarGmail(rumps.App):
                         m[l+str(i)][l+str(i)+'snippet'].title = v['snippet']
 
             if commandline or self.debug_mode:
-                print "labels: %s" % (self.settings['labels']
+                print ''
+                print 'labels: %s' % (self.settings['labels']
                                       if 'labels' in self.settings else '')
-                print "filter: %s" % (self.settings['filter']
+                print 'filter: %s' % (self.settings['filter']
                                       if 'filter' in self.settings else '')
                 print 'Total number of unread messages: %d\n' % len(all_ids)
                 for l in labels:
                     if len(labels) > 1:
                         print '%d messages for %s' % (len(ids[l]), l)
-                        for i in um_menu[l]:
-                            print "%s\n" % i.title()
+                        for i in um_menu[l].values():
+                            print '%s\n' % i.title
                     else:
-                        for i in um_menu:
-                            print "%s\n" % i.title()
+                        for i in um_menu.values():
+                            print '%s\n' % i.title
 
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
@@ -470,18 +485,21 @@ class MenuBarGmail(rumps.App):
     def show_mail(self, label, msg_id):
         # rumps.alert(title='From %s\n%s' % (sender, date),
         #             message=subject + '\n\n' + message)
-        v = self.messages[label][msg_id]
-        w = rumps.Window(message=v['Subject']+'\n\n'+v['body'],
-                         title="From %s %s" % (v['From'], v['Date']),
+        v = self.message_contents[msg_id]
+        w = rumps.Window(message=v['Subject']+'\n\n'+v['snippet'],
+                         title="From %s\n%s" % (v['From'], v['Date']),
                          dimensions=(0, 0),
                          ok="Cancel",
                          cancel="Open in browser")
         w.add_button("Mark as read")
+        w.add_button("Reply")
         response = w.run()
         if response.clicked == 0:
             self.open_gmail(label)
         elif response.clicked == 2:
             self.mark_as_read(msg_id)
+        elif response.clicked == 3:
+            self.reply(msg_id)
 
     def get_exe(self):
         exe = os.path.abspath(__file__)
@@ -548,6 +566,61 @@ class MenuBarGmail(rumps.App):
     def mark_as_read(self, msg_id):
         self.remove_labels(msg_id, 'UNREAD')
         self.get_messages()
+
+    def get_address_name(self, address):
+            return re.sub(r' *<.*> *', '', address)
+
+    def get_address(self, address):
+        try:
+            return re.search(r'(?<=<).*(?=>)', address).group()
+        except:
+            return address
+
+    def reply(self, msg_id):
+        v = self.message_contents[msg_id]
+        to = self.get_address(v['From'])
+        cc_tmp = []
+        cc_tmp += v['To'].split(',') if v['To'] != '' else []
+        cc_tmp += v['Cc'].split(',') if v['Cc'] != '' else []
+        cc = []
+        for a in cc_tmp:
+            if a.lower() not in [to.lower(), self.address.lower()]:
+                cc.append(self.get_address(a))
+
+        body = ''
+        for l in v['body'].split('\n'):
+            body += '> ' + l + '\n'
+
+        w = rumps.Window('To: %s\n' % to
+                         + 'Cc: %s\n' % ','.join(cc)
+                         + 'From: %s\n' % self.address,
+                         default_text=body,
+                         dimensions=(500, 500),
+                         ok="Cancel",
+                         cancel="Send")
+        w.add_button('Save')
+        response = w.run()
+        if response.clicked == 1:
+            pass
+        elif response.clicked in [0, 2]:
+            message = MIMEText(response.text)
+            message['to'] = to
+            message['cc'] = ''.join(cc)
+            message['from'] = self.address
+            message['subject'] = 'Re: ' + v['Subject']
+            m = {'raw': base64.urlsafe_b64encode(message.as_string())}
+
+            try:
+                if response.clicked == 1:
+                    self.service.users().messages().send(userId='me',
+                                                         body=m).execute()
+
+                elif response.clicked == 2:
+                    self.service.users().drafts()\
+                        .create(userId='me', body={'message': m}).execute()
+            except errors.HttpError, error:
+                print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
+                                          error)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
