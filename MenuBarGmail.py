@@ -18,6 +18,7 @@ import urllib
 import httplib2
 import BaseHTTPServer
 import rumps
+from email.mime.text import MIMEText
 from oauth2client.file import Storage
 from oauth2client.tools import run_flow, argparser
 from oauth2client.client import OAuth2WebServerFlow
@@ -335,14 +336,17 @@ class MenuBarGmail(rumps.App):
                         self.message_contents[i]['Date'] =\
                             x['value'].split(', ')[1].split(' +')[0]
                     elif x['name'] == 'From':
-                        self.message_contents[i]['From'] =\
-                            re.sub(r' *<.*> *', '', x['value'])
-                        if self.message_contents[i]['From'] == '':
-                            self.message_contents[i]['From'] = x['value']
-                    if 'Subject' in self.message_contents[i]\
-                            and 'Date' in self.message_contents[i]\
-                            and 'From' in self.message_contents[i]:
-                        break
+                        self.message_contents[i]['FromName'] =\
+                            self.get_address_name(x['value'])
+                        self.message_contents[i]['From'] = x['value']
+                    elif x['name'] in ['Subject', 'To', 'Cc', 'Bcc',
+                                       'In-Reply-To', 'References', ]:
+                        self.message_contents[i][x['name']] = x['value']
+
+                for k in ['To', 'Cc']:
+                    if k not in self.message_contents[i]:
+                        self.message_contents[i][k] = ''
+
                 self.message_contents[i]['labelIds'] = message['labelIds']
                 self.message_contents[i]['snippet'] = message['snippet']
                 body = None
@@ -365,7 +369,7 @@ class MenuBarGmail(rumps.App):
                         and self.menu['Mail notification'].state:
                     rumps.notification(
                         title='Mail from %s' %
-                        self.message_contents[i]['From'],
+                        self.message_contents[i]['FromName'],
                         subtitle=self.message_contents[i]['Subject'],
                         message=self.message_contents[i]['snippet'])
 
@@ -388,7 +392,7 @@ class MenuBarGmail(rumps.App):
                                 .isoformat(),
                                 reverse=True):
                     v = self.message_contents[i]
-                    title = '%s %s | %s' % (v['Date'], v['From'], v['Subject'])
+                    title = '%s %s | %s' % (v['Date'], v['FromName'], v['Subject'])
                     title = title[0:80]
                     if len(labels) > 1:
                         m = um_menu[l]
@@ -483,7 +487,7 @@ class MenuBarGmail(rumps.App):
         #             message=subject + '\n\n' + message)
         v = self.message_contents[msg_id]
         w = rumps.Window(message=v['Subject']+'\n\n'+v['snippet'],
-                         title="From %s %s" % (v['From'], v['Date']),
+                         title="From %s\n%s" % (v['From'], v['Date']),
                          dimensions=(0, 0),
                          ok="Cancel",
                          cancel="Open in browser")
@@ -563,13 +567,60 @@ class MenuBarGmail(rumps.App):
         self.remove_labels(msg_id, 'UNREAD')
         self.get_messages()
 
+    def get_address_name(self, address):
+            return re.sub(r' *<.*> *', '', address)
+
+    def get_address(self, address):
+        try:
+            return re.search(r'(?<=<).*(?=>)', address).group()
+        except:
+            return address
+
     def reply(self, msg_id):
         v = self.message_contents[msg_id]
-        response = rumps.Window('To: %s' % v['From'],
-                                default_text=v['body'],
-                                dimensions=(500, 500)).run()
-        if response.clicked:
+        to = self.get_address(v['From'])
+        cc_tmp = []
+        cc_tmp += v['To'].split(',') if v['To'] != '' else []
+        cc_tmp += v['Cc'].split(',') if v['Cc'] != '' else []
+        cc = []
+        for a in cc_tmp:
+            if a.lower() not in [to.lower(), self.address.lower()]:
+                cc.append(self.get_address(a))
+
+        body = ''
+        for l in v['body'].split('\n'):
+            body += '> ' + l + '\n'
+
+        w = rumps.Window('To: %s\n' % to
+                         + 'Cc: %s\n' % ','.join(cc)
+                         + 'From: %s\n' % self.address,
+                         default_text=body,
+                         dimensions=(500, 500),
+                         ok="Cancel",
+                         cancel="Send")
+        w.add_button('Save')
+        response = w.run()
+        if response.clicked == 1:
             pass
+        elif response.clicked in [0, 2]:
+            message = MIMEText(response.text)
+            message['to'] = to
+            message['cc'] = ''.join(cc)
+            message['from'] = self.address
+            message['subject'] = 'Re: ' + v['Subject']
+            m = {'raw': base64.urlsafe_b64encode(message.as_string())}
+
+            try:
+                if response.clicked == 1:
+                    self.service.users().messages().send(userId='me',
+                                                         body=m).execute()
+
+                elif response.clicked == 2:
+                    self.service.users().drafts()\
+                        .create(userId='me', body={'message': m}).execute()
+            except errors.HttpError, error:
+                print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
+                                          error)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
