@@ -428,6 +428,9 @@ class MenuBarGmail(rumps.App):
 
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
+        except:
+            print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
+                                      sys.exc_info()[0])
 
     def read_settings(self):
         if not os.path.exists(self.setting_file):
@@ -562,6 +565,9 @@ class MenuBarGmail(rumps.App):
                 body=msg_labels).execute()
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
+        except:
+            print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
+                                      sys.exc_info()[0])
 
     def mark_as_read(self, msg_id):
         self.remove_labels(msg_id, 'UNREAD')
@@ -621,6 +627,9 @@ class MenuBarGmail(rumps.App):
             except errors.HttpError, error:
                 print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
                                           error)
+            except:
+                print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
+                                          sys.exc_info()[0])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
