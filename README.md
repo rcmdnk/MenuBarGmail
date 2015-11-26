@@ -68,6 +68,8 @@ For filter details, refer: [Advanced search - Gmail Help](https://support.google
 Message details (Date, From, Subject, Short summary of message)
 can be seen as a submenu of **Unread message**.
 
+If more than one mails are unread in a same thread, only the last is shown.
+
 If two different labels are set,
 each label is shown as a submenu then details are shown as a submenu of it.
 
