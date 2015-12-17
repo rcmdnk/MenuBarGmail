@@ -16,6 +16,7 @@ import dateutil.parser
 import webbrowser
 import urllib
 import httplib2
+import socket
 import BaseHTTPServer
 import rumps
 from email.mime.text import MIMEText
@@ -31,13 +32,13 @@ __author__ = 'rcmdnk'
 __copyright__ = 'Copyright (c) 2015 rcmdnk'
 __credits__ = ['rcmdnk']
 __license__ = 'MIT'
-__version__ = 'v0.0.9'
-__date__ = '23/Nov/2015'
+__version__ = 'v0.0.10'
+__date__ = '17/Dec/2015'
 __maintainer__ = 'rcmdnk'
 __email__ = 'rcmdnk@gmail.com'
 __status__ = 'Prototype'
 
-DEBUG = False
+DEBUG = True
 MAILS_MAX_GET = 10
 MAILS_MAX_SHOW = 10
 AUTHENTICATION_FILE = os.environ['HOME'] + '/.menubargmail_oauth'
@@ -329,6 +330,10 @@ class MenuBarGmail(rumps.App):
                 n_get += 1
                 message = self.get_service().users().messages().get(
                     userId='me', id=i).execute()
+
+                for k in ['labelIds', 'snippet', 'threadId']:
+                    self.message_contents[i][k] = message[k]
+
                 for x in message['payload']['headers']:
                     if x['name'] == 'Subject':
                         self.message_contents[i]['Subject'] = x['value']
@@ -340,17 +345,15 @@ class MenuBarGmail(rumps.App):
                             self.get_address_name(x['value'])
                         self.message_contents[i]['From'] = x['value']
                     elif x['name'] in ['Subject', 'To', 'Cc', 'Bcc',
-                                       'In-Reply-To', 'References', ]:
+                                       'In-Reply-To', 'References']:
                         self.message_contents[i][x['name']] = x['value']
 
                 for k in ['To', 'Cc']:
                     if k not in self.message_contents[i]:
                         self.message_contents[i][k] = ''
 
-                self.message_contents[i]['labelIds'] = message['labelIds']
-                self.message_contents[i]['snippet'] = message['snippet']
                 body = None
-                if 'payload' in message and 'parts' in message['payload']:
+                if 'parts' in message['payload']:
                     for p in message['payload']['parts']:
                         if 'body' in p and 'data' in p['body']:
                             body = p['body']['data']
@@ -379,6 +382,7 @@ class MenuBarGmail(rumps.App):
             if um_menu._menu is not None:
                 um_menu.clear()
             for l in labels:
+                threadIds = []
                 if len(labels) > 1:
                     # Set each labels' menu
                     um_menu.add(rumps.MenuItem(
@@ -392,7 +396,11 @@ class MenuBarGmail(rumps.App):
                                 .isoformat(),
                                 reverse=True):
                     v = self.message_contents[i]
-                    title = '%s %s | %s' % (v['Date'], v['FromName'], v['Subject'])
+                    if v['threadId'] in threadIds:
+                        continue
+                    threadIds.append(v['threadId'])
+                    title = '%s %s | %s' % (v['Date'], v['FromName'],
+                                            v['Subject'])
                     title = title[0:80]
                     if len(labels) > 1:
                         m = um_menu[l]
@@ -428,9 +436,12 @@ class MenuBarGmail(rumps.App):
 
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
+        except (httplib2.ServerNotFoundError, socket.error), error:
+            print '[ERROR] Maybe offline, %s: %s' % (
+                sys._getframe().f_code.co_name, error)
         except:
-            print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
-                                      sys.exc_info()[0])
+            print '[ERROR] Unexpected, %s: %s' % (
+                sys._getframe().f_code.co_name, sys.exc_info()[0])
 
     def read_settings(self):
         if not os.path.exists(self.setting_file):

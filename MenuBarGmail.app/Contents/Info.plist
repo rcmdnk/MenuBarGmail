@@ -86,8 +86,8 @@
 		<key>PythonExecutable</key>
 		<string>/usr/local/opt/python/bin/python2.7</string>
 		<key>PythonLongVersion</key>
-		<string>2.7.10 (default, Jul 13 2015, 12:05:58) 
-[GCC 4.2.1 Compatible Apple LLVM 6.1.0 (clang-602.0.53)]</string>
+		<string>2.7.11 (default, Dec  5 2015, 14:44:53) 
+[GCC 4.2.1 Compatible Apple LLVM 7.0.0 (clang-700.1.76)]</string>
 		<key>PythonShortVersion</key>
 		<string>2.7</string>
 		<key>py2app</key>
