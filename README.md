@@ -88,7 +88,7 @@ Tested at OS X 10.11.1 El Capitan, Python 2.7.10 (installed by Homebrew)。
     * [google-api-python-client](https://github.com/google/google-api-python-client)
     * [py2app](https://pypi.python.org/pypi/py2app/)
 
-        $ pip install rumps httplib2 oauth2client google-api-python-client py2app
+            $ pip install rumps httplib2 oauth2client google-api-python-client py2app
 
 In OS X 10.11 El Capitan, you may need to install pyobjc packages.
 
