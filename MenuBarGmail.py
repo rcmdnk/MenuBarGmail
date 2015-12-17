@@ -16,6 +16,7 @@ import dateutil.parser
 import webbrowser
 import urllib
 import httplib2
+import socket
 import BaseHTTPServer
 import rumps
 from email.mime.text import MIMEText
@@ -31,8 +32,8 @@ __author__ = 'rcmdnk'
 __copyright__ = 'Copyright (c) 2015 rcmdnk'
 __credits__ = ['rcmdnk']
 __license__ = 'MIT'
-__version__ = 'v0.0.9'
-__date__ = '23/Nov/2015'
+__version__ = 'v0.0.10'
+__date__ = '17/Dec/2015'
 __maintainer__ = 'rcmdnk'
 __email__ = 'rcmdnk@gmail.com'
 __status__ = 'Prototype'
@@ -435,9 +436,12 @@ class MenuBarGmail(rumps.App):
 
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
+        except (httplib2.ServerNotFoundError, socket.error), error:
+            print '[ERROR] Maybe offline, %s: %s' % (
+                sys._getframe().f_code.co_name, error)
         except:
-            print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
-                                      sys.exc_info()[0])
+            print '[ERROR] Unexpected, %s: %s' % (
+                sys._getframe().f_code.co_name, sys.exc_info()[0])
 
     def read_settings(self):
         if not os.path.exists(self.setting_file):
