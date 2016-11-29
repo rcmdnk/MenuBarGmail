@@ -17,6 +17,7 @@ import webbrowser
 import urllib
 import httplib2
 import socket
+import signal
 import BaseHTTPServer
 import rumps
 from email.mime.text import MIMEText
@@ -118,9 +119,9 @@ class MenuBarGmail(rumps.App):
     @rumps.clicked('About')
     def about(self, sender):
         rumps.alert(title='%s' % __prog__,
-                    message='Gmail notification in Menu bar.\n'
-                    + 'Version %s\n' % __version__
-                    + '%s' % __copyright__)
+                    message='Gmail notification in Menu bar.\n' +
+                    'Version %s\n' % __version__ +
+                    '%s' % __copyright__)
 
     @rumps.clicked('Account')
     def account(self, sender):
@@ -242,9 +243,9 @@ class MenuBarGmail(rumps.App):
             if not is_inbox_only:
                 # Get labelIds
                 label_name_id = {x['name'].upper().replace('/', '-'): x['id']
-                                 for x in self.get_service().users()
-                                 .labels().list(userId='me')
-                                 .execute()['labels']}
+                                 for x in self.timeout_execute(
+                                         self.get_service().users().labels()
+                                         .list(userId='me'))['labels']}
             else:
                 label_name_id = {'INBOX': 'INBOX', 'None': None}
             labels = [x for x in labels
@@ -258,19 +259,22 @@ class MenuBarGmail(rumps.App):
             ids = {}
             is_new = False
             for l in labels:
-                response = self.get_service().users().messages().list(
-                    userId='me', labelIds=label_name_id[l.replace('/', '-')],
-                    q=query).execute()
+                response = self.timeout_execute(
+                    self.get_service().users().messages().list(
+                        userId='me',
+                        labelIds=label_name_id[l.replace('/', '-')],
+                        q=query))
                 ids[l] = []
                 if 'messages' in response:
                     ids[l].extend([x['id'] for x in response['messages']])
 
                 while 'nextPageToken' in response:
                     page_token = response['nextPageToken']
-                    response = self.get_service().users().messages().list(
-                        userId='me',
-                        labelIds=label_name_id[l.replace('/', '-')],
-                        q=query, pageToken=page_token).execute()
+                    response = self.timeout_execute(
+                        self.get_service().users().messages().list(
+                            userId='me',
+                            labelIds=label_name_id[l.replace('/', '-')],
+                            q=query, pageToken=page_token))
                     ids[l].extend([x['id'] for x in response['messages']])
 
                 if l not in self.messages:
@@ -328,8 +332,9 @@ class MenuBarGmail(rumps.App):
                 if n_get >= self.mails_max_get:
                     continue
                 n_get += 1
-                message = self.get_service().users().messages().get(
-                    userId='me', id=i).execute()
+                message = self.timeout_execute(
+                    self.get_service().users().messages().get(
+                        userId='me', id=i))
 
                 for k in ['labelIds', 'snippet', 'threadId']:
                     self.message_contents[i][k] = message[k]
@@ -437,11 +442,15 @@ class MenuBarGmail(rumps.App):
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
         except (httplib2.ServerNotFoundError, socket.error), error:
-            print '[ERROR] Maybe offline, %s: %s' % (
+            print '[ERROR] %s: Maybe offline, %s' % (
                 sys._getframe().f_code.co_name, error)
-        except:
-            print '[ERROR] Unexpected, %s: %s' % (
-                sys._getframe().f_code.co_name, sys.exc_info()[0])
+        except Exception, e:
+            if len(e.args) > 0 and "timeout" in e.args[0]:
+                print '[ERROR] %s: %s' % (
+                    sys._getframe().f_code.co_name, e.args[0])
+            else:
+                print '[ERROR] %s: Unexpected, %s' % (
+                    sys._getframe().f_code.co_name, sys.exc_info()[0])
 
     def read_settings(self):
         if not os.path.exists(self.setting_file):
@@ -476,7 +485,7 @@ class MenuBarGmail(rumps.App):
 
         service = build('gmail', 'v1', http=http)
 
-        prof = service.users().getProfile(userId='me').execute()
+        prof = self.timeout_execute(service.users().getProfile(userId='me'))
         self.address = prof['emailAddress']
         self.menu['Account'].title = 'Account: %s' % self.address
 
@@ -571,9 +580,9 @@ class MenuBarGmail(rumps.App):
             labels = [labels]
         msg_labels = {"addLabelIds": [], "removeLabelIds": labels}
         try:
-            self.get_service().users().messages().modify(
+            self.timeout_execute(self.get_service().users().messages().modify(
                 userId='me', id=msg_id,
-                body=msg_labels).execute()
+                body=msg_labels))
         except errors.HttpError, error:
             print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name, error)
         except:
@@ -608,9 +617,9 @@ class MenuBarGmail(rumps.App):
         for l in v['body'].split('\n'):
             body += '> ' + l + '\n'
 
-        w = rumps.Window('To: %s\n' % to
-                         + 'Cc: %s\n' % ','.join(cc)
-                         + 'From: %s\n' % self.address,
+        w = rumps.Window('To: %s\n' % to +
+                         'Cc: %s\n' % ','.join(cc) +
+                         'From: %s\n' % self.address,
                          default_text=body,
                          dimensions=(500, 500),
                          ok="Cancel",
@@ -629,18 +638,28 @@ class MenuBarGmail(rumps.App):
 
             try:
                 if response.clicked == 1:
-                    self.service.users().messages().send(userId='me',
-                                                         body=m).execute()
+                    self.timeout_execute(
+                        self.service.users().messages().send(
+                            userId='me', body=m))
 
                 elif response.clicked == 2:
-                    self.service.users().drafts()\
-                        .create(userId='me', body={'message': m}).execute()
+                    self.timeout_execute(self.service.users().drafts().create(
+                        userId='me', body={'message': m}))
             except errors.HttpError, error:
                 print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
                                           error)
             except:
                 print '[ERROR] %s: %s' % (sys._getframe().f_code.co_name,
                                           sys.exc_info()[0])
+
+    def timeout_execute(self, obj, t=1):
+        def handler(signum, frame):
+            raise Exception("Over %d sec, timeout!" % (t))
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(t)
+        ret = obj.execute()
+        signal.alarm(0)
+        return ret
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
