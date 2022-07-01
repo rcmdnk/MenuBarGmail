@@ -17,7 +17,8 @@ OPTIONS = {
     'iconfile': 'MenuBarGmail.icns',
     'resources': [
         'MenuBarGmailMenuBarIcon.png',
-        '/usr/local/lib/python2.7/site-packages/httplib2/cacerts.txt']
+        'MenuBarGmailMenuBarIconForDark.png',
+        'cacerts.txt']
 }
 
 setup(

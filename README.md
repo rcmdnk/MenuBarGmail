@@ -19,7 +19,7 @@ New message notification is also available, too.
 
 With [Homebrew Cask](http://caskroom.io/), do:
 
-    $ brew cask install rcmdnk/rcmdnkcask/menubargmail
+    $ brew install rcmdnk/rcmdnkcask/menubargmail
 
 Or download the app and install it in **/Applications** or **~/Applications**.
 
@@ -79,20 +79,11 @@ On the window, **Mark as read** and **Open in browser** buttons are availabl.
 
 # How to build
 
-Tested at OS X 10.11.1 El Capitan, Python 2.7.10 (installed by Homebrew)。
+Tested at macOS 12.4 Monterey, Python 3.9.13
 
-* Requirements
-    * [rumps](https://github.com/jaredks/rumps)
-    * [httplib2](https://github.com/jcgregorio/httplib2)
-    * [oauth2client](https://github.com/google/oauth2client)
-    * [google-api-python-client](https://github.com/google/google-api-python-client)
-    * [py2app](https://pypi.python.org/pypi/py2app/)
+* Install packages
 
-            $ pip install rumps httplib2 oauth2client google-api-python-client py2app
-
-In OS X 10.11 El Capitan, you may need to install pyobjc packages.
-
-    $ pip install pyobjc-core pyobjc-framework-Accounts pyobjc-framework-AddressBook pyobjc-framework-AppleScriptKit pyobjc-framework-AppleScriptObjC pyobjc-framework-Automator pyobjc-framework-CFNetwork pyobjc-framework-CalendarStore pyobjc-framework-Cocoa pyobjc-framework-Collaboration pyobjc-framework-CoreData pyobjc-framework-CoreLocation pyobjc-framework-CoreText pyobjc-framework-CoreWLAN pyobjc-framework-DictionaryServices pyobjc-framework-DiskArbitration pyobjc-framework-EventKit pyobjc-framework-ExceptionHandling pyobjc-framework-FSEvents pyobjc-framework-InputMethodKit pyobjc-framework-InstallerPlugins pyobjc-framework-InstantMessage pyobjc-framework-LatentSemanticMapping pyobjc-framework-LaunchServices pyobjc-framework-OpenDirectory pyobjc-framework-PreferencePanes pyobjc-framework-PubSub pyobjc-framework-QTKit pyobjc-framework-Quartz pyobjc-framework-ScreenSaver pyobjc-framework-ScriptingBridge pyobjc-framework-SearchKit pyobjc-framework-ServiceManagement pyobjc-framework-Social pyobjc-framework-StoreKit pyobjc-framework-SyncServices pyobjc-framework-SystemConfiguration pyobjc-framework-WebKit
+    $ pip install -r requirements.txt
 
 * Build
 
