@@ -78,17 +78,17 @@
 	<array/>
 	<key>PyRuntimeLocations</key>
 	<array>
-		<string>@executable_path/../Frameworks/Python.framework/Versions/3.9/Python</string>
+		<string>@executable_path/../Frameworks/Python3.framework/Versions/3.8/Python3</string>
 	</array>
 	<key>PythonInfoDict</key>
 	<dict>
 		<key>PythonExecutable</key>
-		<string>/Users/kaneda/.config/nvim/python3/bin/python</string>
+		<string>/Library/Developer/CommandLineTools/usr/bin/python3</string>
 		<key>PythonLongVersion</key>
-		<string>3.9.13 (main, May 24 2022, 21:13:51) 
-[Clang 13.1.6 (clang-1316.0.21.2)]</string>
+		<string>3.8.9 (default, Apr 13 2022, 08:48:06) 
+[Clang 13.1.6 (clang-1316.0.21.2.5)]</string>
 		<key>PythonShortVersion</key>
-		<string>3.9</string>
+		<string>3.8</string>
 		<key>py2app</key>
 		<dict>
 			<key>alias</key>

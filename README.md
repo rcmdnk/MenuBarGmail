@@ -79,14 +79,14 @@ On the window, **Mark as read** and **Open in browser** buttons are availabl.
 
 # How to build
 
-Tested at macOS 12.4 Monterey, Python 3.9.13
+Tested at macOS 12.4 Monterey, Python 3.9.13 (installed by Homebrew)
 
 * Install packages
 
-    $ pip install -r requirements.txt
+    $ pip3 install -r requirements.txt
 
 * Build
 
-        $ python setup.py py2app
+    $ python3 setup.py py2app
 
 then, **MenuBarGmail.app** will appear in **./dist** directory.
