@@ -18,7 +18,8 @@ OPTIONS = {
     'resources': [
         'MenuBarGmailMenuBarIcon.png',
         'MenuBarGmailMenuBarIconForDark.png',
-        'cacerts.txt']
+        'cacerts.txt'],
+    'packages': ['rumps'],
 }
 
 setup(
