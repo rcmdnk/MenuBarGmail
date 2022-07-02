@@ -1,5 +1,5 @@
-**/*.pyc
 dist/
 build/
 .DS_Store
 .eggs/
+__pycache__/

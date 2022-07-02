@@ -19,7 +19,7 @@ OPTIONS = {
         'MenuBarGmailMenuBarIcon.png',
         'MenuBarGmailMenuBarIconForDark.png',
         'cacerts.txt'],
-    'packages': ['rumps'],
+    'packages': ['rumps'] # , 'python_dateutil', 'httplib2', 'oauth2client', 'google'],
 }
 
 setup(
